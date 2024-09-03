@@ -39,17 +39,11 @@ jobs:
         postgis: [false]
         dev: [false]
         env:
-          - ci/envs/39-minimal.yaml
-          - ci/envs/39-no-optional-deps.yaml
-          - ci/envs/39-pd15-defaults.yaml
-          - ci/envs/39-latest-defaults.yaml
-          - ci/envs/39-latest-conda-forge.yaml
-          - ci/envs/39-latest-conda-forge_no_pyogrio.yaml
-          - ci/envs/310-pd20-conda-forge.yaml
-          - ci/envs/310-latest-conda-forge.yaml
           - ci/envs/311-latest-conda-forge.yaml
           - ci/envs/312-latest-conda-forge.yaml
           - ci/envs/312-latest-conda-forge_no_pyproj.yaml
+          - ci/envs/313-latest-conda-forge.yaml
+          - ci/envs/313-latest-conda-forge_no_pyproj.yaml
         include:
           - env: ci/envs/39-latest-conda-forge_no_pyogrio.yaml
             os: macos-latest
@@ -74,17 +68,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Conda environment with Micromamba
-        uses: mamba-org/setup-micromamba@v1
+      - name: Setup Conda
+        uses: conda-incubator/setup-miniconda@v3
         with:
           environment-file: ${{ matrix.env }}
+          miniforge-version: latest
+          miniforge-variant: Miniforge3
+          use-mamba: false
+          conda-solver: classic
 
       - name: Check and Log Environment
         run: |
           python -V
           python -c "import geopandas; geopandas.show_versions();"
-          micromamba info
-          micromamba list
+          conda info
+          conda list
 
       - name: Test
         run: |
