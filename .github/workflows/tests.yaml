@@ -74,6 +74,7 @@ jobs:
           environment-file: ${{ matrix.env }}
           miniforge-version: latest
           miniforge-variant: Miniforge3
+          use-mamba: false
 
       - name: Check and Log Environment
         run: |
