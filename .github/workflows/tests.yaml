@@ -75,6 +75,7 @@ jobs:
           miniforge-version: latest
           miniforge-variant: Miniforge3
           use-mamba: false
+          conda-solver: classic
 
       - name: Check and Log Environment
         run: |
