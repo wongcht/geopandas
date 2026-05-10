@@ -17,6 +17,8 @@ import geopandas
 from ._decorator import doc
 
 if TYPE_CHECKING:
+    import os
+
     from matplotlib.axes import Axes
     from matplotlib.collections import (
         LineCollection,
@@ -27,6 +29,8 @@ if TYPE_CHECKING:
     from matplotlib.markers import MarkerStyle
     from matplotlib.patches import PathPatch
     from matplotlib.path import Path
+    from rasterio.io import MemoryFile
+    from xyzservices import TileProvider
 
 
 def _set_aspect(
@@ -475,6 +479,8 @@ def plot_series(
     figsize: tuple[float, float] | None = None,
     aspect: float | Literal["auto", "equal", None] = "auto",
     autolim: bool = True,
+    tiles: bool | str | TileProvider | os.PathLike | MemoryFile = False,
+    attr: str | None = None,
     add_labels: bool = True,
     **style_kwds,
 ) -> Axes:
@@ -514,6 +520,22 @@ def plot_series(
         also be set manually (float) as the ratio of y-unit to x-unit.
     autolim : bool (default True)
         Update axes data limits to contain the new geometries.
+    tiles : bool, str, xyzservices.TileProvider, os.PathLike, file-like, or rasterio.io.MemoryFile (default False)
+        Add contextual background tiles. Can be either a boolean,
+        :class:`xyzservices.TileProvider`, any string that can be resolved by
+        :func:`xyzservices.providers.query_name`, URL, or a path to a local file. The
+        placeholders for the XYZ in the URL need to be `{x}`, `{y}`, `{z}`,
+        respectively. For local file paths, the file is read with `rasterio` and all
+        bands are loaded into the basemap. The tiles are automatically warped to the CRS
+        of the geometry. Note that this can result in suboptimal rendering. To avoid
+        warping, geometry needs to be in EPSG:3857 (Web Mercator) or a CRS of the tiles
+        if other projection is used. Default basemap when `True` follows the default
+        of the underlying :func:`contextily.add_basemap`, which is OpenStreetMap
+        Humanitarian.
+    attr : str (default None)
+        Attribution text passed to :func:`contextily.add_basemap` as
+        ``attribution``. When not provided, the default attribution of the selected
+        tile source is used.
     add_labels : bool (default True)
         Use CRS metadata to label the axes.
     **style_kwds : dict
@@ -524,7 +546,7 @@ def plot_series(
     Returns
     -------
     ax : matplotlib axes instance
-    """
+    """  # noqa: E501
     try:
         import matplotlib  # noqa: F401
         from matplotlib.colors import Colormap
@@ -653,6 +675,8 @@ def plot_series(
             ax, points, values_, color=color_, cmap=cmap, **points_kwds
         )
 
+    _add_basemap(ax, tiles, s.crs, attr=attr)
+
     ax.figure.canvas.draw_idle()
 
     return ax
@@ -679,6 +703,8 @@ def plot_dataframe(
     missing_kwds: dict | None = None,
     aspect: float | Literal["auto", "equal", None] = "auto",
     autolim: bool = True,
+    tiles: bool | str | TileProvider | os.PathLike | MemoryFile = False,
+    attr: str | None = None,
     add_labels: bool = True,
     **style_kwds,
 ) -> Axes:
@@ -798,6 +824,22 @@ def plot_dataframe(
         y-unit to x-unit.
     autolim : ``bool`` (default ``True``)
         Update axes data limits to contain the new geometries.
+    tiles : bool, str, xyzservices.TileProvider, os.PathLike, file-like, or rasterio.io.MemoryFile (default False)
+        Add contextual background tiles. Can be either a boolean,
+        :class:`xyzservices.TileProvider`, any string that can be resolved by
+        :func:`xyzservices.providers.query_name`, URL, or a path to a local file. The
+        placeholders for the XYZ in the URL need to be `{x}`, `{y}`, `{z}`,
+        respectively. For local file paths, the file is read with `rasterio` and all
+        bands are loaded into the basemap. The tiles are automatically warped to the CRS
+        of the geometry. Note that this can result in suboptimal rendering. To avoid
+        warping, geometry needs to be in EPSG:3857 (Web Mercator) or a CRS of the tiles
+        if other projection is used. Default basemap when `True` follows the default
+        of the underlying :func:`contextily.add_basemap`, which is OpenStreetMap
+        Humanitarian.
+    attr : str (default None)
+        Attribution text passed to :func:`contextily.add_basemap` as
+        ``attribution``. When not provided, the default attribution of the selected
+        tile source is used.
     add_labels : bool (default True)
         Use CRS metadata to label the axes.
     **style_kwds : dict
@@ -826,7 +868,7 @@ def plot_dataframe(
     >>> df.plot("BoroName", cmap="Set1")  # doctest: +SKIP
 
     See the User Guide page :doc:`../../user_guide/mapping` for details.
-    """
+    """  # noqa: E501
     try:
         import matplotlib.pyplot as plt
         from matplotlib import cm, colormaps, colors
@@ -863,6 +905,8 @@ def plot_dataframe(
             figsize=figsize,
             aspect=aspect,
             autolim=autolim,
+            tiles=tiles,
+            attr=attr,
             **style_kwds,
         )
 
@@ -1234,6 +1278,8 @@ def plot_dataframe(
         # if there is already a colorbar but we want a legend for missing data,
         # user can simply call `ax.legend()` with any custom keywords.
 
+    _add_basemap(ax, tiles, df.crs, attr=attr)
+
     ax.figure.canvas.draw_idle()
     return ax
 
@@ -1259,6 +1305,23 @@ def _check_invalid_categories(categories: Collection[Any], values) -> pd.Categor
         codes_downcast = coerce_indexer_dtype(codes, categories)
         cat = pd.Categorical.from_codes(codes_downcast, categories)
     return cat
+
+
+def _add_basemap(ax, tiles, crs, attr=None):
+    """Optionally add basemap via contextily."""
+    if tiles:
+        try:
+            import contextily
+        except ImportError:
+            raise ImportError(
+                "Contextily package is required for plotting background tiles. "
+                "You can install it using 'conda install -c conda-forge contextily' or "
+                "'pip install contextily'."
+            )
+        if tiles is True:
+            tiles = None
+
+        contextily.add_basemap(source=tiles, ax=ax, crs=crs, attribution=attr)
 
 
 def _set_axis_labels(ax, crs):
