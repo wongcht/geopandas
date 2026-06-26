@@ -1435,5 +1435,17 @@ def test_read_parquet_from_https():
     _ = pytest.importorskip("requests")
     _ = pytest.importorskip("aiohttp")
     path = "https://github.com/opengeospatial/geoparquet/raw/refs/heads/main/test_data/data-polygon-encoding_wkb.parquet"
+
+    # In https://github.com/opengeospatial/geoparquet/commit/bef58ca4a3324fa53e9744397cb4d5adecafae60,
+    # example parquet file was updated which is not compatible with pyarrow < 20.0.0,
+    # raises OSError: Metadata contains Thrift LogicalType that is not recognized
+    # thus select the test file from the previous commit
+    if Version(pyarrow.__version__) < Version("20.0.0"):
+        path = (
+            "https://github.com/opengeospatial/geoparquet/raw/"
+            "9384f08cc8c343aba92997ea91e9ef0e5a4190eb/"
+            "test_data/data-polygon-encoding_wkb.parquet"
+        )
+
     df = geopandas.read_parquet(path)
     assert df.shape == (4, 2)
